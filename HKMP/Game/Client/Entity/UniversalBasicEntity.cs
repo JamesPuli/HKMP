@@ -11,10 +11,11 @@ namespace Hkmp.Game.Client.Entity {
         private readonly PlayMakerFSM _fsm;
 
         private readonly Dictionary<int, string> _animationIds;
+        private readonly Dictionary<string, int[]> _stateActionPairs; // key is state name, list is relevant animation indices
 
         private readonly tk2dSpriteAnimator _animator;
 
-        private readonly string _defaultState;
+        private readonly string _defaultStateName;
 
         public UniversalBasicEntity(
             NetClient netClient,
@@ -27,10 +28,41 @@ namespace Hkmp.Game.Client.Entity {
             _animator = gameObject.GetComponent<tk2dSpriteAnimator>();
             // Get the initial scale of the object on enter. This is used to determine which way the sprite it facing. 
             _animationIds = new Dictionary<int, string>();
-            _defaultState = _fsm.ActiveStateName;
+            _stateActionPairs = GetSyncedStatesAndAction(_fsm);
+            _defaultStateName = _fsm.ActiveStateName;
+            Log(_defaultStateName);
 
             CreateAnimationEvents();
             RemoveAllTransitions(_fsm);//Testing
+ 
+            _stateActionPairs = GetSyncedStatesAndAction(_fsm);
+
+            string msg = _stateActionPairs.Aggregate( "", (acc, x) => acc + x.Key + ": " + string.Join(", ", x.Value) + "\n");
+            Log(msg);
+        }
+        
+        /*
+        Scrapes an fsm for the states with actions that have associated audio, 
+        returns a dictionary of these with (key,value) pair (state,action index list)
+        */
+        private Dictionary<string, int[]> GetSyncedStatesAndAction(PlayMakerFSM _inputFSM) {
+            Dictionary<string, int[]> output = new Dictionary<string, int[]>();
+
+            foreach (var state in _inputFSM.FsmStates) {
+                List<int> actionsToSync = new List<int>();
+                for (int i = 0; i < state.Actions.Length; i++) {
+                    var action = state.Actions[i];
+
+                    if (autoSyncedActions.Contains(action.Name)) {
+                        actionsToSync.Add(i); // keeping indices to use later
+                    }
+                }
+                if (actionsToSync.Count != 0) {
+                    output.Add(state.Name, actionsToSync.ToArray());
+                }
+            }
+
+            return output;
         }
 
         private void CreateAnimationEvents() {
@@ -53,6 +85,13 @@ namespace Hkmp.Game.Client.Entity {
             else {
                 Logger.Get().Warn(this, "Animator not found");
             }
+            // Create update event for each state that needs syncing 
+            foreach(var keyValuePair in _stateActionPairs) {
+                string name = keyValuePair.Key;
+                int[] actionsToExecute = keyValuePair.Value; // Array of the index of all actions that need to be exectued.
+                _animationIds.Add(_animationIds.Count, name);
+                _fsm.InsertMethod(name, 0, CreateUpdateMethod(() => { SendAnimationUpdate((byte)GetAnimationId(name)); }));
+            }
 
             // Making each animation send an update
             _animator.AnimationEventTriggered = (caller, currentClip, currentFrame) => {
@@ -66,12 +105,12 @@ namespace Hkmp.Game.Client.Entity {
         }
         protected override void InternalInitializeAsSceneClient(byte? stateIndex) {
             RemoveAllTransitions(_fsm);
-            _fsm.SetState(_defaultState);
+            _fsm.SetState(_defaultStateName);
             _animator.Stop();
         }
         protected override void InternalSwitchToSceneHost() {
             RestoreAllTransitions(_fsm);
-            _fsm.SetState(_defaultState);
+            _fsm.SetState(_defaultStateName);
         }
         public override void UpdateAnimation(byte animationIndex, byte[] animationInfo) {
             base.UpdateAnimation(animationIndex, animationInfo);
@@ -86,6 +125,8 @@ namespace Hkmp.Game.Client.Entity {
 
         public override void UpdateState(byte stateIndex) {
         }
+
+        public string[] autoSyncedActions = new string[] { "AudioPlayRandom", "SetAudioPitch" };
         public void Log(string s) {
             Logger.Get().Info(this, s);
         }
