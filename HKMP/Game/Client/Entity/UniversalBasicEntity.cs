@@ -36,7 +36,7 @@ namespace Hkmp.Game.Client.Entity {
             _defaultStateName = defaultStateName;
 
             CreateAnimationEvents();
-            RemoveAllTransitions(_fsm); // Stops jittering from fsm's starting up, breaks something in host switching
+            RemoveAllTransitions(_fsm); // Stops jittering from fsm's starting up, breaks something in host switching. This resolution is temporary.
         }
         public string[] autoSyncedActions = new string[] { "AudioPlayRandom", "SetAudioPitch", "AudioPlayerOneShot" };
 
@@ -67,9 +67,8 @@ namespace Hkmp.Game.Client.Entity {
         }
 
         private void CreateAnimationEvents() {
-            //_fsm.InsertMethod("Startle", 0, CreateUpdateMethod(() => { SendAnimationUpdate(8); Log("Buzzer sent Startle update with ID 8");})); // bugtesting hardcoded
-            // Some animations are not controlled by the FSM. Hence we must make all animations in the entity's Walker component to trigger `AnimationEventTriggered` to send state updates. 
-            // Creating syncables for Animations
+            // Some animations are not controlled by the FSM. Hence we must make all animations in the entity's animator to trigger `AnimationEventTriggered` to send state updates. 
+            // Creating syncables for Animations //
             if (_animator != null) {
                 foreach (var clip in _animator.Library.clips) {
                     // Add animation to dictionary
@@ -98,15 +97,15 @@ namespace Hkmp.Game.Client.Entity {
                     Log($"{FSM.name} Sending AUpdate {currentClip.name} with ID {syncableIndex}");
                 }
             };
+
+            // Create update event for each state (and associated actions) that needs syncing 
             Log("State Actions Pairs");
-            // Create update event for each state that needs syncing 
             foreach (var keyValuePair in _stateActionPairs) {
                 Log(keyValuePair.Key.ToString() + ", " + string.Join(",", keyValuePair.Value.Select(p => p.ToString())) ); // string.Join(",", keyValuePair.Value.Select(ToString))
                 string name = keyValuePair.Key;
                 int[] actionsToSync = keyValuePair.Value;
                 var syncableIndex = _syncables.Count;
                 _syncables.Add(new StateActionSync(this, name, actionsToSync));
-                //_fsm.InsertMethod("Anticipate", 0, CreateUpdateMethod(() => { SendAnimationUpdate((byte)Animation.Anticipate); }));
                 // very weird bug, log printing means we should be sending SUpdate but client isn't recieving anything (i.e. UpdateAnimation not called) at all
                 _fsm.InsertMethod(name, 0, CreateUpdateMethod(() => { SendAnimationUpdate((byte)syncableIndex); Log($"{FSM.name} Sending SUpdate {name} with action {string.Join(",", actionsToSync.Select(p => p.ToString()))} with ID {syncableIndex}"); }));
             }
