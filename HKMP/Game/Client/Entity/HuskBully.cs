@@ -13,9 +13,6 @@ namespace Hkmp.Game.Client.Entity {
 
         private readonly AudioSource _audioSource;
 
-        private readonly HutongGames.PlayMaker.Actions.WalkLeftRight a;
-
-
         public HuskBully(
             NetClient netClient,
             byte entityId,

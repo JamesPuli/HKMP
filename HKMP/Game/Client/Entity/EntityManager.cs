@@ -326,7 +326,7 @@ namespace Hkmp.Game.Client.Entity {
 
                 entityId = GetEnemyId(enemyName.Replace("Buzzer", ""));
 
-                entity = new Vengefly(_netClient, entityId, gameObject);
+                entity = new UniversalBasicEntity(_netClient, entityId, gameObject, entityType, "chaser", "Initiate");
 
                 return true;
             };
@@ -335,7 +335,7 @@ namespace Hkmp.Game.Client.Entity {
 
                 entityId = GetEnemyId(enemyName.Replace("Fly", ""));
 
-                entity = new UniversalBasicEntity(_netClient, entityId, gameObject, entityType, "Bouncer Control");
+                entity = new UniversalBasicEntity(_netClient, entityId, gameObject, entityType, "Bouncer Control", "Initialise");
 
                 return true;
             };
@@ -347,7 +347,7 @@ namespace Hkmp.Game.Client.Entity {
                 entity = new HuskBully(_netClient, entityId, gameObject);
 
                 return true;
-            };
+            };/*
             if (enemyName.Contains("Crawler")) {
                 entityType = EntityType.Crawlid;
 
@@ -356,7 +356,7 @@ namespace Hkmp.Game.Client.Entity {
                 entity = new Crawlid(_netClient, entityId, gameObject);
 
                 return true;
-            };
+            };*/
             //
             // if (enemyName.Contains("Hornet Boss 1")) {
             //     entityType = EntityType.Hornet1;
